@@ -63,3 +63,28 @@ fn main() -> bitcoincore_rpc::Result<()> {
 
     Ok(())
 }
+/*
+checklist for the path  way to follow
+Create or load wallet Miner
+Create or load wallet Trader
+Mine enough blocks to the Miner wallet so its balance is spendable — research why newly mined coins aren't spendable immediately (search: "Bitcoin coinbase maturity 100 blocks")
+Get a new address from Trader wallet
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+*/
