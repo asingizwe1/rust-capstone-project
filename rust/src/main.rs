@@ -77,8 +77,13 @@ let blocks_mined = mine_until_positive_balance(&miner_rpc, &mining_address)?;
  // extract details
     let tx = miner_rpc.get_transaction(&txid, None)?;
     let decoded = miner_rpc.get_raw_transaction_info(&txid, None)?;
+        // trace input
+    let prev_txid = decoded.vin[0].txid...;
+    let prev_tx = miner_rpc.get_raw_transaction_info(&prev_txid, None)?;
+    // match vout index to get input address + amount
     // Write the data to ../out.txt in the specified format given in readme.md
-
+// identify trader vout vs change vout by comparing addresses
+    // write out.txt
     Ok(())
 }
 /*
