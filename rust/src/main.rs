@@ -49,6 +49,11 @@ fn main() -> bitcoincore_rpc::Result<()> {
     //creates and loads a new wallet
     //wallet name -  a path, the wallet will be created at the path location
 createwallet "wallet_name" ( disable_private_keys blank "passphrase" avoid_reuse descriptors load_on_startup ){}
+//setting up wallet
+ ensure_wallet_loaded(&rpc, "Miner")?;
+ ensure_wallet_loaded(&rpc, "Trader")?;
+
+
     // Generate spendable balances in the Miner wallet. How many blocks needs to be mined?
 
     // Load Trader wallet and generate a new address
@@ -58,7 +63,14 @@ createwallet "wallet_name" ( disable_private_keys blank "passphrase" avoid_reuse
     // Check transaction in mempool
 
     // Mine 1 block to confirm the transaction
-
+ let mining_address = ...get_new_address with label "Mining Reward" on Miner...
+let blocks_mined = mine_until_positive_balance(&miner_rpc, &mining_address)?;
+    // send phase
+    let trader_address = ...get_new_address with label "Received" on Trader...
+    let txid = miner_rpc.send_to_address(...)?;
+        // mempool check
+    let mempool_entry = miner_rpc.get_mempool_entry(&txid)?;
+    println!("{:?}", mempool_entry);
     // Extract all required transaction details
 
     // Write the data to ../out.txt in the specified format given in readme.md
