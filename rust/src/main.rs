@@ -46,6 +46,8 @@ fn main() -> bitcoincore_rpc::Result<()> {
     println!("Blockchain Info: {:?}", blockchain_info);
 
     // Create/Load the wallets, named 'Miner' and 'Trader'. Have logic to optionally create/load them if they do not exist or not loaded already.
+    //creates and loads a new wallet
+    //wallet name -  a path, the wallet will be created at the path location
 createwallet "wallet_name" ( disable_private_keys blank "passphrase" avoid_reuse descriptors load_on_startup ){}
     // Generate spendable balances in the Miner wallet. How many blocks needs to be mined?
 
