@@ -71,8 +71,12 @@ let blocks_mined = mine_until_positive_balance(&miner_rpc, &mining_address)?;
         // mempool check
     let mempool_entry = miner_rpc.get_mempool_entry(&txid)?;
     println!("{:?}", mempool_entry);
+        // confirm
+    miner_rpc.generate_to_address(1, &mining_address)?;
     // Extract all required transaction details
-
+ // extract details
+    let tx = miner_rpc.get_transaction(&txid, None)?;
+    let decoded = miner_rpc.get_raw_transaction_info(&txid, None)?;
     // Write the data to ../out.txt in the specified format given in readme.md
 
     Ok(())
