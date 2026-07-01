@@ -33,7 +33,7 @@ fn send(rpc: &Client, addr: &str) -> bitcoincore_rpc::Result<String> {
     assert!(send_result.complete);
     Ok(send_result.txid)
 }
-
+//When you call an RPC method, you can scope it to a particular wallet — so the command only affects that wallet’s data.
 fn main() -> bitcoincore_rpc::Result<()> {
     // Connect to Bitcoin Core RPC
     let rpc = Client::new(
@@ -75,6 +75,24 @@ let blocks_mined = mine_until_positive_balance(&miner_rpc, &mining_address)?;
     miner_rpc.generate_to_address(1, &mining_address)?;
     // Extract all required transaction details
  // extract details
+
+//work
+fn list_wallets(&self) -> Result<Vec<String>> { ... }
+
+//work
+fn load_wallet(&self, wallet: &str) -> Result<LoadWalletResult> { ... }//load wallet
+
+//work
+    fn create_wallet(
+        &self,
+        wallet: &str,
+        disable_private_keys: Option<bool>,
+        blank: Option<bool>,
+        passphrase: Option<&str>,
+        avoid_reuse: Option<bool>,
+    ) -> Result<LoadWalletResult> { ... }
+
+
     let tx = miner_rpc.get_transaction(&txid, None)?;
     let decoded = miner_rpc.get_raw_transaction_info(&txid, None)?;
         // trace input
