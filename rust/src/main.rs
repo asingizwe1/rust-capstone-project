@@ -91,10 +91,51 @@ fn load_wallet(&self, wallet: &str) -> Result<LoadWalletResult> { ... }//load wa
         passphrase: Option<&str>,
         avoid_reuse: Option<bool>,
     ) -> Result<LoadWalletResult> { ... }
-
+//work
+    let miner_rpc = Client::new(
+    &format!("{}/wallet/Miner", RPC_URL),
+    Auth::UserPass(RPC_USER.to_owned(), RPC_PASS.to_owned()),
+)?;
+// same pattern for trader_rpc
 
     let tx = miner_rpc.get_transaction(&txid, None)?;
     let decoded = miner_rpc.get_raw_transaction_info(&txid, None)?;
+//work
+let mining_address = miner_rpc.get_new_address(Some("Mining Reward"), None)?
+    .require_network(bitcoin::Network::Regtest)?;
+//work
+miner_rpc.generate_to_address(101, &mining_address)?;
+//work
+let balance = miner_rpc.get_balance(None, None)?;
+println!("Miner balance: {}", balance);
+// Bitcoin coinbase maturity rule: newly mined block rewards are locked
+// for 100 confirmations before they become spendable. This means after
+// mining block N, the reward from block N only unlocks at block N+100.
+// So we need to mine at least 101 blocks before the FIRST reward is spendable.
+
+//work
+send_to_address(
+    &self,
+    address: &Address<NetworkChecked>,
+    amount: Amount,
+    comment: Option<&str>,
+    comment_to: Option<&str>,
+    subtract_fee_from_amount: Option<bool>,
+    replaceable: Option<bool>,
+    confirmation_target: Option<u32>,
+    estimate_mode: Option<EstimateMode>,
+) -> Result<Txid>
+//work
+let trader_address = trader_rpc.get_new_address(Some("Received"), None)?
+    .require_network(bitcoin::Network::Regtest)?;
+
+let txid = miner_rpc.send_to_address(
+    &trader_address,
+    Amount::from_btc(20.0)?,
+    None, None, None, None, None, None
+)?;
+println!("Sent txid: {}", txid);
+
         // trace input
     let prev_txid = decoded.vin[0].txid...;
     let prev_tx = miner_rpc.get_raw_transaction_info(&prev_txid, None)?;
