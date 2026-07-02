@@ -1,6 +1,6 @@
 #![allow(unused)]
 use bitcoin::hex::DisplayHex;
-use bitcoincore_rpc::bitcoin::Amount;
+use bitcoincore_rpc::bitcoin::{Amount,Network};//Network::Regtest is used when calling .require_network() on addresses
 use bitcoincore_rpc::{Auth, Client, RpcApi};
 use serde::Deserialize;
 use serde_json::json;
