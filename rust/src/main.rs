@@ -7,6 +7,28 @@ use serde_json::json;
 use std::fs::File;
 use std::io::Write;
 
+/*imports
+constants
+helper function: ensure_wallet_loaded()
+main() {
+    1. connect (base rpc)
+    2. ensure wallets
+    3. wallet-scoped clients
+    4. mining address + mine 101 blocks
+    5. print balance + comment
+    6. trader address
+    7. send 20 BTC
+    8. check mempool
+    9. mine 1 block to confirm
+    10. get tx details
+    11. trace input source
+    12. identify trader vs change output
+    13. build TxOutput struct
+    14. write out.txt
+}
+struct TxOutput { all 10 fields }
+impl TxOutput { fn write_to_file() } */
+
 // Node access params
 const RPC_URL: &str = "http://127.0.0.1:18443"; // Default regtest RPC port
 const RPC_USER: &str = "alice";
