@@ -136,6 +136,31 @@ let txid = miner_rpc.send_to_address(
 )?;
 println!("Sent txid: {}", txid);
 
+//crate details
+// send_to_address(
+//     &self,
+//     address: &Address<NetworkChecked>,
+//     amount: Amount,
+//     comment: Option<&str>,
+//     comment_to: Option<&str>,
+//     subtract_fee_from_amount: Option<bool>,
+//     replaceable: Option<bool>,
+//     confirmation_target: Option<u32>,
+//     estimate_mode: Option<EstimateMode>,
+// ) -> Result<Txid>
+//work
+let trader_address = trader_rpc.get_new_address(Some("Received"), None)?
+    .require_network(bitcoin::Network::Regtest)?;
+
+let txid = miner_rpc.send_to_address(
+    &trader_address,
+    Amount::from_btc(20.0)?,
+    None, None, None, None, None, None
+)?;
+println!("Sent txid: {}", txid);
+//fee, details, blockhash, blockheight fields at the top level, and inside decoded → vin and vout arrays
+///verifying with "F:\BITCOIN_CORE\bitcoin\bin\bitcoin-cli.exe" -regtest -rpcuser=alice -rpcpassword=password -rpcwallet=Miner gettransaction <YOUR_TXID>
+/// 
         // trace input
     let prev_txid = decoded.vin[0].txid...;
     let prev_tx = miner_rpc.get_raw_transaction_info(&prev_txid, None)?;
