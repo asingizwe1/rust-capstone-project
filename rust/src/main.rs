@@ -69,7 +69,7 @@ fn ensure_wallet_loaded(rpc: &Client, name: &str) -> bitcoincore_rpc::Result<()>
         println!("Wallet '{}' is already loaded.", name);
         return Ok(());
     }
-// Bitcoin Core errors if you create_wallet on something that already exists. And it errors if you load_wallet something that doesn't exist on disk. So you check the loaded list first, then try load, then fall back to create.
+ // Bitcoin Core errors if you create_wallet on something that already exists. And it errors if you load_wallet something that doesn't exist on disk. So you check the loaded list first, then try load, then fall back to create.
     // Try loading from disk first — wallet may exist but not be active
     // docs: https://developer.bitcoin.org/reference/rpc/loadwallet.html
     match rpc.load_wallet(name) {
@@ -86,6 +86,16 @@ fn ensure_wallet_loaded(rpc: &Client, name: &str) -> bitcoincore_rpc::Result<()>
     }
     Ok(())
 }
+
+fn main() -> bitcoincore_rpc::Result<()> {
+//connection to base RPC
+let rpc = Client::new(
+        RPC_URL,
+        Auth::UserPass(RPC_USER.to_owned(), RPC_PASS.to_owned()),
+    )?;
+
+    let blockchain_info = rpc.get_blockchain_info()?;
+    println!("Chain: {}", blockchain_info.chain);
 
     // Generate spendable balances in the Miner wallet. How many blocks needs to be mined?
 
@@ -256,7 +266,7 @@ writeln!(file, "{}", block_height)?;
 writeln!(file, "{}", block_hash)?;
 
     Ok(())
-}
+}}
 /*
 checklist for the path  way to follow
 Create or load wallet Miner
