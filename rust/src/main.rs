@@ -172,6 +172,23 @@ let fee = tx_info.fee.unwrap();           // negative number = fee paid
 let block_hash = tx_info.info.blockhash.unwrap();
 let block_height = tx_info.info.blockheight.unwrap();
 
+//work
+let raw_tx = miner_rpc.get_raw_transaction_info(&txid, Some(&block_hash))?;
+// raw_tx.vout is a Vec of outputs — each has .value (Amount) and .script_pub_key.address
+// raw_tx.vin is a Vec of inputs — each has .txid and .vout (the output index of prev tx)
+
+
+//work - finding the input source address
+//looking up and getting input source address
+let prev_txid = raw_tx.vin[0].txid.unwrap();
+let prev_vout_index = raw_tx.vin[0].vout.unwrap() as usize;
+
+let prev_tx = miner_rpc.get_raw_transaction_info(&prev_txid, None)?;
+let input_output = &prev_tx.vout[prev_vout_index];
+
+let miner_input_amount = input_output.value;
+let miner_input_address = input_output.script_pub_key.address.as_ref().unwrap();
+
 // Mine 1 block to confirm
 miner_rpc.generate_to_address(1, &mining_address)?;
 
