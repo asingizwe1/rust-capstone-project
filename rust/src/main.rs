@@ -163,6 +163,21 @@ let rpc = Client::new(
     miner_rpc.generate_to_address(1, &mining_address)?;
     println!("Transaction confirmed.");
 
+    //extracting tx details
+// get_transaction gives us top-level fields: fee, blockhash, blockheight
+    // passing Some(true) means include watch-only addresses
+    // docs: https://developer.bitcoin.org/reference/rpc/gettransaction.html
+    let tx_info = miner_rpc.get_transaction(&txid, Some(true))?;
+    let fee = tx_info.fee.expect("fee must exist for confirmed tx");
+    let block_hash = tx_info.info.blockhash.expect("blockhash must exist");
+    let block_height = tx_info.info.blockheight.expect("blockheight must exist");
+/////////////////continue
+/// 
+    // get_raw_transaction_info gives us the decoded vin/vout structure
+    // We pass block_hash as a hint so the node finds it faster
+    // docs: https://developer.bitcoin.org/reference/rpc/getrawtransaction.html
+    let raw_tx = miner_rpc.get_raw_transaction_info(&txid, Some(&block_hash))?;
+
 
     // Check transaction in mempool
 
