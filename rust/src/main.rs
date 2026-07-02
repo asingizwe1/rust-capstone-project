@@ -17,7 +17,7 @@ struct TxOutput {
     miner_change_address: String,
     miner_change_amount: f64,
     fee: f64,
-    block_height: u64, //so that it can never be negative
+    block_height: u32, //so that it can never be negative
     block_hash: String,
 }
 
@@ -96,164 +96,157 @@ fn main() -> bitcoincore_rpc::Result<()> {
 
     //
 
-    fn main() -> bitcoincore_rpc::Result<()> {
-        //connection to base RPC
-        let rpc = Client::new(
-            RPC_URL,
-            Auth::UserPass(RPC_USER.to_owned(), RPC_PASS.to_owned()),
-        )?;
+    //creating and loading the wallets
+    ensure_wallet_loaded(&rpc, "Miner")?;
+    ensure_wallet_loaded(&rpc, "Trader")?;
 
-        let blockchain_info = rpc.get_blockchain_info()?;
-        println!("Chain: {}", blockchain_info.chain);
+    //setting up wallet scoped clients
+    // Each wallet needs its own client pointed at /wallet/<name>
+    // This scopes all RPC calls to that specific wallet
+    // docs: wallet URL format http://host:port/wallet/<name>
+    let miner_rpc = Client::new(
+        &format!("{}/wallet/Miner", RPC_URL),
+        Auth::UserPass(RPC_USER.to_owned(), RPC_PASS.to_owned()),
+    )?;
 
-        //creating and loading the wallets
-        ensure_wallet_loaded(&rpc, "Miner")?;
-        ensure_wallet_loaded(&rpc, "Trader")?;
+    let trader_rpc = Client::new(
+        &format!("{}/wallet/Trader", RPC_URL),
+        Auth::UserPass(RPC_USER.to_owned(), RPC_PASS.to_owned()),
+    )?;
 
-        //setting up wallet scoped clients
-        // Each wallet needs its own client pointed at /wallet/<name>
-        // This scopes all RPC calls to that specific wallet
-        // docs: wallet URL format http://host:port/wallet/<name>
-        let miner_rpc = Client::new(
-            &format!("{}/wallet/Miner", RPC_URL),
-            Auth::UserPass(RPC_USER.to_owned(), RPC_PASS.to_owned()),
-        )?;
+    //mining address +101 blocks
+    // Generate a new address in Miner wallet labeled "Mining Reward"
+    // require_network() ensures this address is valid for regtest
+    // docs: https://developer.bitcoin.org/reference/rpc/getnewaddress.html
+    let mining_address = miner_rpc
+        .get_new_address(Some("Mining Reward"), None)?
+        .require_network(Network::Regtest)
+        .expect("Mining address must be valid for regtest");
 
-        let trader_rpc = Client::new(
-            &format!("{}/wallet/Trader", RPC_URL),
-            Auth::UserPass(RPC_USER.to_owned(), RPC_PASS.to_owned()),
-        )?;
+    // Bitcoin coinbase maturity rule: block rewards are locked for 100
+    // confirmations after they are mined. A miner receives the reward in
+    // block N, but cannot spend it until block N+100 is also mined.
+    // Therefore we mine 101 blocks so the very first reward becomes spendable.
+    // docs: https://developer.bitcoin.org/reference/rpc/generatetoaddress.html
+    miner_rpc.generate_to_address(101, &mining_address)?;
 
-        //mining address +101 blocks
-        // Generate a new address in Miner wallet labeled "Mining Reward"
-        // require_network() ensures this address is valid for regtest
-        // docs: https://developer.bitcoin.org/reference/rpc/getnewaddress.html
-        let mining_address = miner_rpc
-            .get_new_address(Some("Mining Reward"), None)?
-            .require_network(Network::Regtest)?;
+    let balance = miner_rpc.get_balance(None, None)?;
+    println!("Miner balance after mining: {} BTC", balance.to_btc());
 
-        // Bitcoin coinbase maturity rule: block rewards are locked for 100
-        // confirmations after they are mined. A miner receives the reward in
-        // block N, but cannot spend it until block N+100 is also mined.
-        // Therefore we mine 101 blocks so the very first reward becomes spendable.
-        // docs: https://developer.bitcoin.org/reference/rpc/generatetoaddress.html
-        miner_rpc.generate_to_address(101, &mining_address)?;
+    //setting up the trader address
+    // Generate receiving address in Trader wallet labeled "Received"
+    let trader_address = trader_rpc
+        .get_new_address(Some("Received"), None)?
+        .require_network(Network::Regtest)
+        .expect("Mining address must be valid for regtest");
+    //changing from .require_network(Network::Regtest)?; because .require_network() returns Result<Address, bitcoin::address::Error>. The ? operator needs to convert that error into bitcoincore_rpc::Error — but that conversion (From trait) isn't implemented
 
-        let balance = miner_rpc.get_balance(None, None)?;
-        println!("Miner balance after mining: {} BTC", balance.to_btc());
+    // Generate spendable balances in the Miner wallet. How many blocks needs to be mined?
 
-        //setting up the trader address
-        // Generate receiving address in Trader wallet labeled "Received"
-        let trader_address = trader_rpc
-            .get_new_address(Some("Received"), None)?
-            .require_network(Network::Regtest)?;
+    // Load Trader wallet and generate a new address
 
-        // Generate spendable balances in the Miner wallet. How many blocks needs to be mined?
+    // Send 20 BTC from Miner to Trader
+    // Send 20 BTC from Miner to Trader
+    // Amount::from_btc returns a Result so we use ? to unwrap
+    // docs: https://developer.bitcoin.org/reference/rpc/sendtoaddress.html
+    let txid = miner_rpc.send_to_address(
+        &trader_address,
+        Amount::from_btc(20.0)?,
+        None, // comment
+        None, // comment_to
+        None, // subtract_fee_from_amount
+        None, // replaceable
+        None, // confirmation_target
+        None, // estimate_mode
+    )?;
+    println!("Transaction sent: {}", txid);
 
-        // Load Trader wallet and generate a new address
+    //memory pool chack
+    // Fetch the transaction from the mempool while it is still unconfirmed
+    // The mempool is node-wide so we use the base rpc, not wallet-scoped
+    // docs: https://developer.bitcoin.org/reference/rpc/getmempoolentry.html
+    let mempool_entry = rpc.get_mempool_entry(&txid)?;
+    println!("Mempool entry fees: {:?}", mempool_entry.fees);
 
-        // Send 20 BTC from Miner to Trader
-        // Send 20 BTC from Miner to Trader
-        // Amount::from_btc returns a Result so we use ? to unwrap
-        // docs: https://developer.bitcoin.org/reference/rpc/sendtoaddress.html
-        let txid = miner_rpc.send_to_address(
-            &trader_address,
-            Amount::from_btc(20.0)?,
-            None, // comment
-            None, // comment_to
-            None, // subtract_fee_from_amount
-            None, // replaceable
-            None, // confirmation_target
-            None, // estimate_mode
-        )?;
-        println!("Transaction sent: {}", txid);
+    // Mine 1 block to confirm the transaction
+    miner_rpc.generate_to_address(1, &mining_address)?;
+    println!("Transaction confirmed.");
 
-        //memory pool chack
-        // Fetch the transaction from the mempool while it is still unconfirmed
-        // The mempool is node-wide so we use the base rpc, not wallet-scoped
-        // docs: https://developer.bitcoin.org/reference/rpc/getmempoolentry.html
-        let mempool_entry = rpc.get_mempool_entry(&txid)?;
-        println!("Mempool entry fees: {:?}", mempool_entry.fees);
+    //extracting tx details
+    // get_transaction gives us top-level fields: fee, blockhash, blockheight
+    // passing Some(true) means include watch-only addresses
+    // docs: https://developer.bitcoin.org/reference/rpc/gettransaction.html
+    let tx_info = miner_rpc.get_transaction(&txid, Some(true))?;
+    let fee = tx_info.fee.expect("fee must exist for confirmed tx");
+    let block_hash = tx_info.info.blockhash.expect("blockhash must exist");
+    let block_height = tx_info.info.blockheight.expect("blockheight must exist");
+    // get_raw_transaction_info gives us the decoded vin/vout structure
+    // We pass block_hash as a hint so the node finds it faster
+    // docs: https://developer.bitcoin.org/reference/rpc/getrawtransaction.html
+    let raw_tx = miner_rpc.get_raw_transaction_info(&txid, Some(&block_hash))?;
 
-        // Mine 1 block to confirm the transaction
-        miner_rpc.generate_to_address(1, &mining_address)?;
-        println!("Transaction confirmed.");
+    //Trace the input back to its source
+    // vin[0].txid is the previous transaction this input is spending from
+    // vin[0].vout is which output index of that previous transaction
+    // We must look up that previous tx to find the actual address and amount
+    let prev_txid = raw_tx.vin[0].txid.expect("vin txid must exist");
+    let prev_vout_index = raw_tx.vin[0].vout.expect("vin vout index must exist") as usize;
 
-        //extracting tx details
-        // get_transaction gives us top-level fields: fee, blockhash, blockheight
-        // passing Some(true) means include watch-only addresses
-        // docs: https://developer.bitcoin.org/reference/rpc/gettransaction.html
-        let tx_info = miner_rpc.get_transaction(&txid, Some(true))?;
-        let fee = tx_info.fee.expect("fee must exist for confirmed tx");
-        let block_hash = tx_info.info.blockhash.expect("blockhash must exist");
-        let block_height = tx_info.info.blockheight.expect("blockheight must exist");
-        // get_raw_transaction_info gives us the decoded vin/vout structure
-        // We pass block_hash as a hint so the node finds it faster
-        // docs: https://developer.bitcoin.org/reference/rpc/getrawtransaction.html
-        let raw_tx = miner_rpc.get_raw_transaction_info(&txid, Some(&block_hash))?;
+    let prev_tx = miner_rpc.get_raw_transaction_info(&prev_txid, None)?;
+    let input_source = &prev_tx.vout[prev_vout_index];
 
-        //Trace the input back to its source
-        // vin[0].txid is the previous transaction this input is spending from
-        // vin[0].vout is which output index of that previous transaction
-        // We must look up that previous tx to find the actual address and amount
-        let prev_txid = raw_tx.vin[0].txid.expect("vin txid must exist");
-        let prev_vout_index = raw_tx.vin[0].vout.expect("vin vout index must exist") as usize;
+    let miner_input_amount = input_source.value;
+    // .clone() copies the Option<Address> so we can call methods on it
+    // .assume_checked() assures Rust that this address is already network-validated"
+    let miner_input_address = input_source
+        .script_pub_key
+        .address
+        .clone()
+        .expect("input address must exist")
+        .assume_checked();
 
-        let prev_tx = miner_rpc.get_raw_transaction_info(&prev_txid, None)?;
-        let input_source = &prev_tx.vout[prev_vout_index];
+    //identifying trader output
+    // The transaction has 2 outputs: one to Trader, one as change back to Miner
+    // We identify them by comparing each output address to trader_address
+    let mut trader_amount = Amount::ZERO;
+    let mut miner_change_address = trader_address.clone(); // placeholder
+    let mut miner_change_amount = Amount::ZERO;
 
-        let miner_input_amount = input_source.value;
-        // .clone() copies the Option<Address> so we can call methods on it
-        // .assume_checked() assures Rust that this address is already network-validated"
-        let miner_input_address = input_source
+    for output in &raw_tx.vout {
+        let addr = output
             .script_pub_key
             .address
             .clone()
-            .expect("input address must exist")
+            .expect("output address must exist")
             .assume_checked();
 
-        //identifying trader output
-        // The transaction has 2 outputs: one to Trader, one as change back to Miner
-        // We identify them by comparing each output address to trader_address
-        let mut trader_amount = Amount::ZERO;
-        let mut miner_change_address = trader_address.clone(); // placeholder
-        let mut miner_change_amount = Amount::ZERO;
-
-        for output in &raw_tx.vout {
-            let addr = output
-                .script_pub_key
-                .address
-                .clone()
-                .expect("output address must exist")
-                .assume_checked();
-
-            if addr == trader_address {
-                trader_amount = output.value;
-            } else {
-                miner_change_address = addr;
-                miner_change_amount = output.value;
-            }
+        if addr == trader_address {
+            trader_amount = output.value;
+        } else {
+            miner_change_address = addr;
+            miner_change_amount = output.value;
         }
-        //setting up my output struct
-        let output = TxOutput {
-            txid: txid.to_string(),
-            miner_input_address: miner_input_address.to_string(),
-            miner_input_amount: miner_input_amount.to_btc(),
-            trader_address: trader_address.to_string(),
-            trader_amount: trader_amount.to_btc(),
-            miner_change_address: miner_change_address.to_string(),
-            miner_change_amount: miner_change_amount.to_btc(),
-            fee: fee.to_btc(), // negative value — test.spec.ts takes abs()
-            block_height,
-            block_hash: block_hash.to_string(),
-        };
-        //writing struct content to out.txt
-        output.write_to_file("../out.txt")?;
-        println!("Output written to ../out.txt");
-
-        Ok(())
     }
+    //setting up my output struct
+    let output = TxOutput {
+        txid: txid.to_string(),
+        miner_input_address: miner_input_address.to_string(),
+        miner_input_amount: miner_input_amount.to_btc(),
+        trader_address: trader_address.to_string(),
+        trader_amount: trader_amount.to_btc(),
+        miner_change_address: miner_change_address.to_string(),
+        miner_change_amount: miner_change_amount.to_btc(),
+        fee: fee.to_btc(), // negative value — test.spec.ts takes abs()
+        block_height,
+        block_hash: block_hash.to_string(),
+    };
+    //writing struct content to out.txt
+    output.write_to_file("../out.txt")?;
+    println!("Output written to ../out.txt");
+
+    Ok(())
 }
+
 /*
 checklist for the path  way to follow
 Create or load wallet Miner
