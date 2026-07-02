@@ -126,13 +126,32 @@ let rpc = Client::new(
     let balance = miner_rpc.get_balance(None, None)?;
     println!("Miner balance after mining: {} BTC", balance.to_btc());
 
-    
+    //setting up the trader address
+    // Generate receiving address in Trader wallet labeled "Received"
+    let trader_address = trader_rpc
+        .get_new_address(Some("Received"), None)?
+        .require_network(Network::Regtest)?;
 
     // Generate spendable balances in the Miner wallet. How many blocks needs to be mined?
 
     // Load Trader wallet and generate a new address
 
     // Send 20 BTC from Miner to Trader
+// Send 20 BTC from Miner to Trader
+    // Amount::from_btc returns a Result so we use ? to unwrap
+    // docs: https://developer.bitcoin.org/reference/rpc/sendtoaddress.html
+    let txid = miner_rpc.send_to_address(
+        &trader_address,
+        Amount::from_btc(20.0)?,
+        None, // comment
+        None, // comment_to
+        None, // subtract_fee_from_amount
+        None, // replaceable
+        None, // confirmation_target
+        None, // estimate_mode
+    )?;
+    println!("Transaction sent: {}", txid);
+
 
     // Check transaction in mempool
 
