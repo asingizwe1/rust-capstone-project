@@ -49,6 +49,34 @@ const RPC_PASS: &str = "password";
 // An example of using the `send` RPC call, which doesn't have exposed API.
 // You can also use serde_json `Deserialize` derivation to capture the returned json result.
 
+fn ensure_wallet_loaded(rpc: &Client, name: &str) -> bitcoincore_rpc::Result<()> {
+    // list_wallets() returns the names of wallets currently loaded in memory
+    // docs: https://developer.bitcoin.org/reference/rpc/listwallets.html
+    let loaded = rpc.list_wallets()?;
+
+    if loaded.contains(&name.to_string()) {
+        // Already loaded, nothing to do
+        println!("Wallet '{}' is already loaded.", name);
+        return Ok(());
+    }
+    // Bitcoin Core errors if you create_wallet on something that already exists. And it errors if you load_wallet something that doesn't exist on disk. So you check the loaded list first, then try load, then fall back to create.
+    // Try loading from disk first — wallet may exist but not be active
+    // docs: https://developer.bitcoin.org/reference/rpc/loadwallet.html
+    match rpc.load_wallet(name) {
+        Ok(_) => {
+            println!("Wallet '{}' loaded from disk.", name);
+        }
+        Err(_) => {
+            // Wallet doesn't exist yet — create it fresh
+            // None params: disable_private_keys, blank, passphrase, avoid_reuse
+            // docs: https://developer.bitcoin.org/reference/rpc/createwallet.html
+            rpc.create_wallet(name, None, None, None, None)?;
+            println!("Wallet '{}' created.", name);
+        }
+    }
+    Ok(())
+}
+
 //When you call an RPC method, you can scope it to a particular wallet — so the command only affects that wallet’s data.
 fn main() -> bitcoincore_rpc::Result<()> {
     // Connect to Bitcoin Core RPC
@@ -67,33 +95,6 @@ fn main() -> bitcoincore_rpc::Result<()> {
     // createwallet "wallet_name" ( disable_private_keys blank "passphrase" avoid_reuse descriptors load_on_startup ){}
 
     //
-    fn ensure_wallet_loaded(rpc: &Client, name: &str) -> bitcoincore_rpc::Result<()> {
-        // list_wallets() returns the names of wallets currently loaded in memory
-        // docs: https://developer.bitcoin.org/reference/rpc/listwallets.html
-        let loaded = rpc.list_wallets()?;
-
-        if loaded.contains(&name.to_string()) {
-            // Already loaded, nothing to do
-            println!("Wallet '{}' is already loaded.", name);
-            return Ok(());
-        }
-        // Bitcoin Core errors if you create_wallet on something that already exists. And it errors if you load_wallet something that doesn't exist on disk. So you check the loaded list first, then try load, then fall back to create.
-        // Try loading from disk first — wallet may exist but not be active
-        // docs: https://developer.bitcoin.org/reference/rpc/loadwallet.html
-        match rpc.load_wallet(name) {
-            Ok(_) => {
-                println!("Wallet '{}' loaded from disk.", name);
-            }
-            Err(_) => {
-                // Wallet doesn't exist yet — create it fresh
-                // None params: disable_private_keys, blank, passphrase, avoid_reuse
-                // docs: https://developer.bitcoin.org/reference/rpc/createwallet.html
-                rpc.create_wallet(name, None, None, None, None)?;
-                println!("Wallet '{}' created.", name);
-            }
-        }
-        Ok(())
-    }
 
     fn main() -> bitcoincore_rpc::Result<()> {
         //connection to base RPC
