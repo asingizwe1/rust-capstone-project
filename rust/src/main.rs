@@ -160,7 +160,21 @@ let txid = miner_rpc.send_to_address(
 println!("Sent txid: {}", txid);
 //fee, details, blockhash, blockheight fields at the top level, and inside decoded → vin and vout arrays
 ///verifying with "F:\BITCOIN_CORE\bitcoin\bin\bitcoin-cli.exe" -regtest -rpcuser=alice -rpcpassword=password -rpcwallet=Miner gettransaction <YOUR_TXID>
-/// 
+
+//work
+//fetching unconfirmed transaction from mempool
+let mempool_entry = rpc.get_mempool_entry(&txid)?;
+println!("Mempool entry: {:?}", mempool_entry);
+
+//work
+let tx_info = miner_rpc.get_transaction(&txid, Some(true))?;
+let fee = tx_info.fee.unwrap();           // negative number = fee paid
+let block_hash = tx_info.info.blockhash.unwrap();
+let block_height = tx_info.info.blockheight.unwrap();
+
+// Mine 1 block to confirm
+miner_rpc.generate_to_address(1, &mining_address)?;
+
         // trace input
     let prev_txid = decoded.vin[0].txid...;
     let prev_tx = miner_rpc.get_raw_transaction_info(&prev_txid, None)?;
