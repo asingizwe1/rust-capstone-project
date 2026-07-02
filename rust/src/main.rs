@@ -171,12 +171,29 @@ let rpc = Client::new(
     let fee = tx_info.fee.expect("fee must exist for confirmed tx");
     let block_hash = tx_info.info.blockhash.expect("blockhash must exist");
     let block_height = tx_info.info.blockheight.expect("blockheight must exist");
-/////////////////continue
-/// 
     // get_raw_transaction_info gives us the decoded vin/vout structure
     // We pass block_hash as a hint so the node finds it faster
     // docs: https://developer.bitcoin.org/reference/rpc/getrawtransaction.html
     let raw_tx = miner_rpc.get_raw_transaction_info(&txid, Some(&block_hash))?;
+
+//Trace the input back to its source
+// vin[0].txid is the previous transaction this input is spending from
+    // vin[0].vout is which output index of that previous transaction
+    // We must look up that previous tx to find the actual address and amount
+    let prev_txid = raw_tx.vin[0].txid.expect("vin txid must exist");
+    let prev_vout_index = raw_tx.vin[0].vout.expect("vin vout index must exist") as usize;
+
+    let prev_tx = miner_rpc.get_raw_transaction_info(&prev_txid, None)?;
+    let input_source = &prev_tx.vout[prev_vout_index];
+
+    let miner_input_amount = input_source.value;
+    let miner_input_address = input_source
+        .script_pub_key
+        .address
+        .clone()
+        .expect("input address must exist")
+        .assume_checked();
+
 
 
     // Check transaction in mempool
