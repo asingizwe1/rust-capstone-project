@@ -194,9 +194,32 @@ let rpc = Client::new(
         .expect("input address must exist")
         .assume_checked();
 
+//identifying trader output
+// The transaction has 2 outputs: one to Trader, one as change back to Miner
+    // We identify them by comparing each output address to trader_address
+    let mut trader_amount = Amount::ZERO;
+    let mut miner_change_address = trader_address.clone(); // placeholder
+    let mut miner_change_amount = Amount::ZERO;
+
+    for output in &raw_tx.vout {
+        let addr = output
+            .script_pub_key
+            .address
+            .clone()
+            .expect("output address must exist")
+            .assume_checked();
+
+        if addr == trader_address {
+            trader_amount = output.value;
+        } else {
+            miner_change_address = addr;
+            miner_change_amount = output.value;
+        }
+    }
 
 
-    // Check transaction in mempool
+
+      // Check transaction in mempool
 
     // Mine 1 block to confirm the transaction
  let mining_address = ...get_new_address with label "Mining Reward" on Miner...
