@@ -189,6 +189,16 @@ let input_output = &prev_tx.vout[prev_vout_index];
 let miner_input_amount = input_output.value;
 let miner_input_address = input_output.script_pub_key.address.as_ref().unwrap();
 
+//work -IDENTIFYING trader's output vs miner's change
+for output in &raw_tx.vout {
+    let addr = output.script_pub_key.address.as_ref().unwrap();
+    if addr == &trader_address {
+        // this is trader output
+    } else {
+        // this is miner change
+    }
+}
+
 // Mine 1 block to confirm
 miner_rpc.generate_to_address(1, &mining_address)?;
 
@@ -199,6 +209,19 @@ miner_rpc.generate_to_address(1, &mining_address)?;
     // Write the data to ../out.txt in the specified format given in readme.md
 // identify trader vout vs change vout by comparing addresses
     // write out.txt
+//work - Rust file I/O.
+let mut file = File::create("out.txt")?;
+writeln!(file, "{}", txid)?;
+writeln!(file, "{}", miner_input_address)?;
+writeln!(file, "{}", miner_input_amount.to_btc())?;
+writeln!(file, "{}", trader_address)?;
+writeln!(file, "{}", trader_amount.to_btc())?;
+writeln!(file, "{}", miner_change_address)?;
+writeln!(file, "{}", miner_change_amount.to_btc())?;
+writeln!(file, "{}", fee.to_btc())?;     // will be negative, test takes abs()
+writeln!(file, "{}", block_height)?;
+writeln!(file, "{}", block_hash)?;
+
     Ok(())
 }
 /*
