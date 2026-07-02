@@ -54,9 +54,6 @@ fn main() -> bitcoincore_rpc::Result<()> {
     //creates and loads a new wallet
     //wallet name -  a path, the wallet will be created at the path location
 // createwallet "wallet_name" ( disable_private_keys blank "passphrase" avoid_reuse descriptors load_on_startup ){}
-// //setting up wallet
-//  ensure_wallet_loaded(&rpc, "Miner")?;
-//  ensure_wallet_loaded(&rpc, "Trader")?;
 
 //
 fn ensure_wallet_loaded(rpc: &Client, name: &str) -> bitcoincore_rpc::Result<()> {
@@ -96,6 +93,40 @@ let rpc = Client::new(
 
     let blockchain_info = rpc.get_blockchain_info()?;
     println!("Chain: {}", blockchain_info.chain);
+
+//setting up wallet scoped clients
+// Each wallet needs its own client pointed at /wallet/<name>
+    // This scopes all RPC calls to that specific wallet
+    // docs: wallet URL format http://host:port/wallet/<name>
+    let miner_rpc = Client::new(
+        &format!("{}/wallet/Miner", RPC_URL),
+        Auth::UserPass(RPC_USER.to_owned(), RPC_PASS.to_owned()),
+    )?;
+
+    let trader_rpc = Client::new(
+        &format!("{}/wallet/Trader", RPC_URL),
+        Auth::UserPass(RPC_USER.to_owned(), RPC_PASS.to_owned()),
+    )?;
+
+//mining address +101 blocks
+// Generate a new address in Miner wallet labeled "Mining Reward"
+    // require_network() ensures this address is valid for regtest
+    // docs: https://developer.bitcoin.org/reference/rpc/getnewaddress.html
+    let mining_address = miner_rpc
+        .get_new_address(Some("Mining Reward"), None)?
+        .require_network(Network::Regtest)?;
+
+    // Bitcoin coinbase maturity rule: block rewards are locked for 100
+    // confirmations after they are mined. A miner receives the reward in
+    // block N, but cannot spend it until block N+100 is also mined.
+    // Therefore we mine 101 blocks so the very first reward becomes spendable.
+    // docs: https://developer.bitcoin.org/reference/rpc/generatetoaddress.html
+    miner_rpc.generate_to_address(101, &mining_address)?;
+
+    let balance = miner_rpc.get_balance(None, None)?;
+    println!("Miner balance after mining: {} BTC", balance.to_btc());
+
+    
 
     // Generate spendable balances in the Miner wallet. How many blocks needs to be mined?
 
