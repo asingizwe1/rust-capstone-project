@@ -152,6 +152,17 @@ let rpc = Client::new(
     )?;
     println!("Transaction sent: {}", txid);
 
+//memory pool chack 
+// Fetch the transaction from the mempool while it is still unconfirmed
+    // The mempool is node-wide so we use the base rpc, not wallet-scoped
+    // docs: https://developer.bitcoin.org/reference/rpc/getmempoolentry.html
+    let mempool_entry = rpc.get_mempool_entry(&txid)?;
+    println!("Mempool entry fees: {:?}", mempool_entry.fees);
+
+// Mine 1 block to confirm the transaction
+    miner_rpc.generate_to_address(1, &mining_address)?;
+    println!("Transaction confirmed.");
+
 
     // Check transaction in mempool
 
